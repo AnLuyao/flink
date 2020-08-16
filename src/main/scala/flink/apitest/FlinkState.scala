@@ -1,17 +1,23 @@
 package flink.apitest
 
 import java.util
+import java.util.concurrent.TimeUnit
 
 import org.apache.flink.api.common.functions.{ReduceFunction, RichFlatMapFunction, RichMapFunction}
+import org.apache.flink.api.common.restartstrategy.RestartStrategies
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, MapState, MapStateDescriptor, ReducingState, ReducingStateDescriptor, ValueState, ValueStateDescriptor}
+import org.apache.flink.api.common.time.Time
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.contrib.streaming.state.RocksDBStateBackend
+import org.apache.flink.runtime.executiongraph.restart.RestartStrategy
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import org.apache.flink.runtime.state.memory.MemoryStateBackend
+import org.apache.flink.streaming.api.CheckpointingMode
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.util.Collector
+
 import scala.collection.JavaConversions._
 
 /**
@@ -25,6 +31,22 @@ object FlinkState {
     //    environment.setStateBackend(new MemoryStateBackend())
     //    environment.setStateBackend( new FsStateBackend(""))
     //    environment.setStateBackend(new RocksDBStateBackend("",true))
+
+
+    //checkpoint相关配置
+    //启用checkpoint,指定触发检查点间隔时间
+    environment.enableCheckpointing(1000L)
+    //其他配置
+    environment.getCheckpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE)
+    environment.getCheckpointConfig.setCheckpointTimeout(30000L)
+    environment.getCheckpointConfig.setMaxConcurrentCheckpoints(2)
+    environment.getCheckpointConfig.setMinPauseBetweenCheckpoints(500L)
+
+    //重启策略的配置
+    environment.setRestartStrategy(RestartStrategies.fixedDelayRestart(3, 1000L))
+    environment.setRestartStrategy(RestartStrategies.failureRateRestart(5, Time.of(5, TimeUnit.MINUTES), Time.of(10, TimeUnit.SECONDS)))
+
+
     val inputStream: DataStream[String] = environment.socketTextStream("localhost", 7777)
     val dataStream: DataStream[SensorReading] = inputStream.map(x => {
       val dataArray: Array[String] = x.split(",")
@@ -32,7 +54,7 @@ object FlinkState {
     })
 
     val warningStream: DataStream[(String, Double, Double)] = dataStream
-      .keyBy("id")
+      .keyBy(_.id)
       .flatMapWithState[(String, Double, Double), Double]({
       case (inputData: SensorReading, None) => (List.empty, Some(inputData.temperature))
       case (inputData: SensorReading, lastTemp: Some[Double]) => {
@@ -120,7 +142,7 @@ class MyProcessor extends KeyedProcessFunction[String, SensorReading, Int] {
 }
 
 //operator state demo
-class MyMapper() extends RichMapFunction[SensorReading, Long] with ListCheckpointed[Long] {
+class MyMapper() extends RichMapFunction[SensorReading, Long] with ListCheckpointed[java.lang.Long] {
   var count: Long = 0
 
   override def map(in: SensorReading): Long = {
@@ -128,20 +150,13 @@ class MyMapper() extends RichMapFunction[SensorReading, Long] with ListCheckpoin
     count
   }
 
-  override def snapshotState(checkpointId: Long, timestamp: Long): util.List[Long] = {
-    val stateList = new util.ArrayList[Long]()
+  override def snapshotState(checkpointId: Long, timestamp: Long): util.List[java.lang.Long] = {
+    val stateList = new util.ArrayList[java.lang.Long]()
     stateList.add(count)
     stateList
   }
 
-  override def restoreState(state: util.List[Long]): Unit = {
-    val numList = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-
-    // for 循环
-    for (a <- numList) {
-      println(a)
-    }
-
+  override def restoreState(state: util.List[java.lang.Long]): Unit = {
     for (countState <- state) {
       count += countState
 
