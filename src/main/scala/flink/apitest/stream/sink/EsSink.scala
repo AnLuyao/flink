@@ -1,8 +1,8 @@
-package flink.apitest.sink
+package flink.apitest.stream.sink
 
 import java.util
 
-import flink.apitest.SensorReading
+import flink.apitest.stream.SensorReading
 import org.apache.flink.api.common.functions.RuntimeContext
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.elasticsearch.{ElasticsearchSinkFunction, RequestIndexer}

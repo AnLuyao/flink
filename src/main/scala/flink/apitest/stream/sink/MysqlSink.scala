@@ -1,8 +1,8 @@
-package flink.apitest.sink
+package flink.apitest.stream.sink
 
 import java.sql.{Connection, DriverManager, PreparedStatement}
 
-import flink.apitest.SensorReading
+import flink.apitest.stream.SensorReading
 import org.apache.flink.api.common.functions.{IterationRuntimeContext, RichFunction, RuntimeContext}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.sink.{RichSinkFunction, SinkFunction}

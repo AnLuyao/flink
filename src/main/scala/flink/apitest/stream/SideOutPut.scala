@@ -1,4 +1,4 @@
-package flink.apitest
+package flink.apitest.stream
 
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.scala._

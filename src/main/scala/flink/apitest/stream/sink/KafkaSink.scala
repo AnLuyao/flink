@@ -1,8 +1,8 @@
-package flink.apitest.sink
+package flink.apitest.stream.sink
 
 import java.util.Properties
 
-import flink.apitest.SensorReading
+import flink.apitest.stream.SensorReading
 import org.apache.flink.api.common.serialization.{SimpleStringEncoder, SimpleStringSchema}
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.api.scala._

@@ -1,10 +1,10 @@
-package flink.apitest
+package flink.apitest.stream
 
-import org.apache.flink.api.common.functions.{MapFunction, ReduceFunction, RichMapFunction}
+import org.apache.flink.api.common.functions.{ReduceFunction, RichMapFunction}
 import org.apache.flink.api.java.functions.KeySelector
-import org.apache.flink.streaming.api.scala.{ConnectedStreams, DataStream, KeyedStream, SplitStream, StreamExecutionEnvironment}
 import org.apache.flink.api.scala._
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.streaming.api.scala.{ConnectedStreams, DataStream, SplitStream, StreamExecutionEnvironment}
 
 /**
   * Created by anluya o on 2020-08-01 17:30
@@ -73,10 +73,10 @@ class MyReduce() extends ReduceFunction[SensorReading] {
   }
 }
 
-//自定义函数类MapFunction
+/*//自定义函数类MapFunction
 class MyMapper extends MapFunction[SensorReading, (String, Double)] {
   override def map(t: SensorReading): (String, Double) = (t.id, t.temperature)
-}
+}*/
 
 class MyRichMapper extends RichMapFunction[SensorReading, Int] {
   override def open(parameters: Configuration): Unit = {}

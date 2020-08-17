@@ -1,6 +1,6 @@
-package flink.apitest.sink
+package flink.apitest.stream.sink
 
-import flink.apitest.SensorReading
+import flink.apitest.stream.SensorReading
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.redis.RedisSink
 import org.apache.flink.streaming.connectors.redis.common.config.FlinkJedisPoolConfig

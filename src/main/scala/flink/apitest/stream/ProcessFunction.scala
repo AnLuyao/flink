@@ -1,4 +1,4 @@
-package flink.apitest
+package flink.apitest.stream
 
 import java.util.Properties
 
