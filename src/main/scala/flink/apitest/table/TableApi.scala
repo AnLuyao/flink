@@ -3,6 +3,7 @@ package flink.apitest.table
 import org.apache.flink.api.scala.ExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.table.api.{DataTypes, EnvironmentSettings, Table, TableEnvironment}
+import org.apache.flink.table.api._
 import org.apache.flink.table.api.bridge.scala._
 import org.apache.flink.table.descriptors.{Csv, FileSystem, Kafka, Schema}
 
@@ -48,7 +49,7 @@ object TableApi {
       .withSchema(new Schema() //定义表结构
       .field("id", DataTypes.STRING())
       .field("timestamp", DataTypes.BIGINT())
-      .field("temperatore", DataTypes.DOUBLE())
+      .field("temperature", DataTypes.DOUBLE())
     )
       .createTemporaryTable("inputTable") //注册一张表
 
@@ -63,14 +64,39 @@ object TableApi {
       .withSchema(new Schema()
         .field("id", DataTypes.STRING())
         .field("timestamp", DataTypes.BIGINT())
-        .field("temperatore", DataTypes.DOUBLE())
+        .field("temperature", DataTypes.DOUBLE())
       )
       .createTemporaryTable("kafkaInputTable")
 
+    // 3.表的查询
+    // 3.1 简单查询，过滤投影
+    val sensorTable: Table = tableEnvironment.from("kafkaInputTable")
+    val resultTable: Table = sensorTable
+      .select('id, 'temperature)
+      .filter('id === "sensor_1")
+    // 3.2 SQl简单查询
+    val resultSqlTable: Table = tableEnvironment.sqlQuery(
+      """
+        |select id,temperature
+        |from kafkaInputTable
+        |where id='sensor_1'
+      """.stripMargin)
+
+    // 3.3简单聚合,统计每个传感器温度个数
+    val aggResultTable: Table = sensorTable.groupBy('id)
+      .select('id, 'id.count() as 'count)
+    // 3.4 SQL实现简单聚合
+    val aggResultSqlTable: Table = tableEnvironment.sqlQuery(
+      """
+        |select id ,count(id) as cnt
+        |from kafkaInputTable
+        |group by id
+      """.stripMargin)
+
 
     //转换成流打印输出
-    val sensorTable: Table = tableEnvironment.from("kafkaInputTable")
-    sensorTable.toAppendStream[(String, Long, Double)].print()
+    resultTable.toAppendStream[(String, Double)].print("result")
+    aggResultSqlTable.toRetractStream[(String,Long)].print("agg")
     environment.execute("table api test job")
 
   }
