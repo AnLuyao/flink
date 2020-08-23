@@ -1,5 +1,7 @@
 package flink.apitest.table
 
+import java.sql.Timestamp
+
 import flink.apitest.stream.SensorReading
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
@@ -31,10 +33,54 @@ object TimeAndWindow {
       .build()
     val tableEnvironment: StreamTableEnvironment = StreamTableEnvironment.create(environment, settings)
 
+    //将DataStream转换成Table
     val sensorTable: Table = tableEnvironment.fromDataStream(dataStream,
       'id, 'timestamp.rowtime() as 'ts, 'temperature)
-    sensorTable.printSchema()
-    sensorTable.toAppendStream[Row].print()
+
+    //窗口操作
+    //1.1Group 窗口，开一个10s滚动窗口，统计每个传感器温度的数量
+    val groupResultTable: Table = sensorTable
+      .window(Tumble over 10.seconds on 'ts as 'tw)
+      .groupBy('id, 'tw)
+      .select('id, 'id.count(), 'tw.end())
+
+    //1.2. Group 窗口SQL实现
+    tableEnvironment.createTemporaryView("sensor", sensorTable)
+    val groupResultSqlTable: Table = tableEnvironment.sqlQuery(
+      """
+        |select id,count(id),tumble_end(ts,interval '10' second)
+        |from sensor
+        |group by id,tumble(ts,interval '10' second)
+      """.stripMargin)
+
+    //2.1 Over窗口，对每个传感器统计每一行数据与前两行数据的平均温度
+    val overResultTable: Table = sensorTable
+      .window(Over partitionBy 'id orderBy 'ts preceding 2.rows as 'w)
+      .select('id, 'ts, 'id.count over 'w, 'temperature.avg over ('w))
+
+    // 2.2 Over窗口的SQL实现
+    val overResultSqlTable: Table = tableEnvironment.sqlQuery(
+      """
+        |select
+        | id,
+        | ts,
+        | count(id) over w,
+        | avg(temperature) over w
+        |from sensor
+        |window w as(
+        | partition by id
+        | order by ts
+        | rows between 2 preceding and current row
+        |)
+      """.stripMargin)
+
+
+
+    //转换成流打印输出
+    overResultTable.toAppendStream[Row].print("group result")
+    overResultSqlTable.toAppendStream[Row].print("overResultSqlTable")
+
+
     environment.execute(" time and window test")
 
   }
